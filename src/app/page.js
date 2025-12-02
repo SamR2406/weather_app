@@ -87,16 +87,13 @@ const backgroundFromWeather = (code, isDay) => {
     : "bg-gradient-to-b from-indigo-900 to-slate-900";
 };
 
-export default function Home() {
-  const [query, setQuery] = useState("Sheffield");
-  const [weather, setWeather] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const getSummary = (data, isDaily = false) => {
-  let t, wind = 0, humidity = 50; 
+const getSummary = (data, isDaily = false) => {
+  let t;
+  let wind = 0;
+  let humidity = 50;
 
   if (isDaily) {
+    if (data?.max === undefined || data?.min === undefined) return "";
     t = (data.max + data.min) / 2;
     if (data.wind !== undefined) wind = data.wind;
     if (data.humidity !== undefined) humidity = data.humidity;
@@ -105,66 +102,97 @@ export default function Home() {
     wind = data.current.wind_speed_10m;
     humidity = data.current.relative_humidity_2m;
   } else {
-    return "Weather data unavailable.";
+    return "";
   }
 
-   const parts = [];
+  const parts = [];
 
-        if (t <= 0) parts.push("Freezing conditions, bundle up! "); 
-        else if (t <= 5) parts.push("Chilly weather outside, possible frost in places. ");
-        else if (t <= 10) parts.push("Cool out today. ");
-        else if (t <= 20) parts.push("Mild out, light jacket rcommended. ");
-        else if (t <= 25) parts.push("Warm and pleasant. ");
-        else if (t <= 30) parts.push("Warm to hot weather today. ");
-        else if (t <= 35) parts.push("It's set to be hot today.");
-        else if (t <= 40) parts.push("Hot temperatures today, stay inside during peak sunlight hours. ");
-        else parts.push("Very hot outdoors, stay hydrated, avoid strenuous activity and keep pets inside. ");
+  if (t <= 0) parts.push("Freezing conditions, bundle up! ");
+  else if (t <= 5) parts.push("Chilly weather outside, possible frost in places. ");
+  else if (t <= 10) parts.push("Cool out today. ");
+  else if (t <= 20) parts.push("Mild out, light jacket rcommended. ");
+  else if (t <= 25) parts.push("Warm and pleasant. ");
+  else if (t <= 30) parts.push("Warm to hot weather today. ");
+  else if (t <= 35) parts.push("It's set to be hot today.");
+  else if (t <= 40) parts.push("Hot temperatures today, stay inside during peak sunlight hours. ");
+  else parts.push("Very hot outdoors, stay hydrated, avoid strenuous activity and keep pets inside. ");
 
-        if (wind <= 1) parts.push("Calm and still. ");
-        else if (wind <= 6) parts.push("Gentle breeze. ");
-        else if (wind <= 20) parts.push("Moderate breeze. ");
-        else if (wind <= 30) parts.push("Fresh breeze. ");
-        else if (wind <= 40) parts.push("Strong breeze today, hang on to your hat! ");
-        else if (wind <= 50) parts.push("Very strong winds, take care. ");
-        else if (wind <= 60) parts.push("Gale force winds. Hard to walk outside. ");
-        else if (wind <= 75) parts.push("Strong gales - watch out for debris. ");
-        else if (wind <= 89) parts.push("Stormy conditions, stay indoors! ");
-        else if (wind <= 100) parts.push("Extreme wind damage likely - do not go outside, stay away from windows. ");
-        else parts.push("Hurricane force winds - seek shelter immediately! ");
+  if (wind <= 1) parts.push("Calm and still. ");
+  else if (wind <= 6) parts.push("Gentle breeze. ");
+  else if (wind <= 20) parts.push("Moderate breeze. ");
+  else if (wind <= 30) parts.push("Fresh breeze. ");
+  else if (wind <= 40) parts.push("Strong breeze today, hang on to your hat! ");
+  else if (wind <= 50) parts.push("Very strong winds, take care. ");
+  else if (wind <= 60) parts.push("Gale force winds. Hard to walk outside. ");
+  else if (wind <= 75) parts.push("Strong gales - watch out for debris. ");
+  else if (wind <= 89) parts.push("Stormy conditions, stay indoors! ");
+  else if (wind <= 100) parts.push("Extreme wind damage likely - do not go outside, stay away from windows. ");
+  else parts.push("Hurricane force winds - seek shelter immediately! ");
 
-        if (humidity <= 20) parts.push("Very dry air. ");
-        else if (humidity <= 40) parts.push("Comfortable humidity levels. ");
-        else if (humidity <= 60) parts.push("A bit humid today. ");
-        else if (humidity <= 80) parts.push("High humidity. ");
-        else parts.push("Extremely humid. ");
+  if (humidity <= 20) parts.push("Very dry air. ");
+  else if (humidity <= 40) parts.push("Comfortable humidity levels. ");
+  else if (humidity <= 60) parts.push("A bit humid today. ");
+  else if (humidity <= 80) parts.push("High humidity. ");
+  else parts.push("Extremely humid. ");
 
-        return parts.join("");
-  };
+  return parts.join("");
+};
 
+export default function Home() {
+  const [query, setQuery] = useState("Sheffield");
+  const [weather, setWeather] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const hourlyPreview = useMemo(() => {
     if (!weather?.hourly?.time?.length) return [];
-    return weather.hourly.time.slice(0, 6).map((time, idx) => ({
-      time: new Date(time).toLocaleTimeString([], { hour: "numeric" }),
-      temperature: formatTemp(weather.hourly.temperature_2m?.[idx]),
-      feelsLike: formatTemp(weather.hourly.apparent_temperature?.[idx]),
+
+    const currentTimeMs = weather.current?.time
+      ? new Date(weather.current.time).getTime()
+      : null;
+
+    const startIndex =
+      currentTimeMs === null
+        ? 0
+        : weather.hourly.time.findIndex(
+            (t) => new Date(t).getTime() >= currentTimeMs
+          );
+
+    const from = startIndex >= 0 ? startIndex : 0;
+
+    const formatter =
+      weather?.timezone &&
+      new Intl.DateTimeFormat([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+        timeZone: weather.timezone,
+      });
+
+    return weather.hourly.time.slice(from, from + 6).map((time, idx) => ({
+      time: formatter
+        ? formatter.format(new Date(time))
+        : new Date(time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      temperature: formatTemp(weather.hourly.temperature_2m?.[from + idx]),
+      feelsLike: formatTemp(weather.hourly.apparent_temperature?.[from + idx]),
     }));
   }, [weather]);
 
   const dailyPreview = useMemo(() => {
     if (!weather?.daily?.time?.length) return [];
-
-    return weather.daily.time.slice(0, 3).map((time, idx) => {
-      const max = formatTemp(weather.daily.temperature_2m_max?.[idx]);
-      const min = formatTemp(weather.daily.temperature_2m_min?.[idx]);
+    return weather.daily.time.slice(0, 7).map((time, idx) => {
+      const maxRaw = weather.daily.temperature_2m_max?.[idx];
+      const minRaw = weather.daily.temperature_2m_min?.[idx];
+      const max = formatTemp(maxRaw);
+      const min = formatTemp(minRaw);
 
       return {
-      date: time,
+        date: time,
         max,
         min,
-      summary: getSummary({max, min}, true),
-    };
-  });
+        summary: getSummary({ max: maxRaw, min: minRaw }, true),
+      };
+    });
   }, [weather]);
 
   
@@ -350,9 +378,9 @@ export default function Home() {
           <Card className="backdrop-blur bg-white/10 text-white border-white/20 shadow-lg">
             <CardHeader className="flex items-center gap-2">
               <Thermometer className="h-5 w-5" />
-              <CardTitle>3-day outlook</CardTitle>
+              <CardTitle>7-day outlook</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-3 md:grid-cols-3">
+            <CardContent className="grid gap-3 md:grid-cols-4">
               {dailyPreview.map((day) => (
                 <div
                   key={day.date}
