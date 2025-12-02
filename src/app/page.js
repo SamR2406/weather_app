@@ -13,6 +13,21 @@ import { Input } from "@/components/ui/input";
 import { RainLayer } from "@/components/RainLayer";
 import { Droplets, MapPin, Search, Sun, Thermometer, Wind } from "lucide-react";
 
+function getOrdinal(n) {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function getCurrentDate() {
+  const d = new Date();
+  const day = d.toLocaleString("en-US", { weekday: "long" });
+  const month = d.toLocaleString("en-US", { month: "long" });
+  const date = getOrdinal(d.getDate());
+
+  return `${day} ${date} ${month}`;
+}
+
 const GEO_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 
@@ -144,7 +159,7 @@ export default function Home() {
       const min = formatTemp(weather.daily.temperature_2m_min?.[idx]);
 
       return {
-      date: new Date(time).toLocaleDateString([], { weekday: "short" }),
+      date: time,
         max,
         min,
       summary: getSummary({max, min}, true),
@@ -270,8 +285,9 @@ export default function Home() {
               <CardHeader className="flex flex-row items-start justify-between">
                 <div className="space-y-1">
                   <CardTitle>{weather.location}</CardTitle>
+                  <div className="text-xs text-white/70">{getCurrentDate()}</div>
                 <CardDescription className="text-white/70">
-                  Current conditions
+                  Current conditions - 
                 </CardDescription>
               </div>
               <Sun className="h-6 w-6" />
@@ -342,6 +358,13 @@ export default function Home() {
                   key={day.date}
                   className="rounded-lg border border-white/15 bg-white/5 p-4 space-y-2"
                 >
+                  <div className="text-sm text-white/80">
+            {new Date(day.date).toLocaleDateString('en-US', {
+              weekday: 'short', // e.g., Tue
+              month: 'short',   // e.g., Dec
+              day: 'numeric'    // e.g., 2
+            })}
+          </div>
                   <div className="text-sm text-white/80">{day.date}</div>
                   <div className="text-2xl font-semibold">{day.max}°</div>
                   <div className="text-white/70">Low {day.min}°</div>
