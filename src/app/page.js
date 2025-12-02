@@ -78,32 +78,22 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const hourlyPreview = useMemo(() => {
-    if (!weather?.hourly?.time?.length) return [];
-    return weather.hourly.time.slice(0, 6).map((time, idx) => ({
-      time: new Date(time).toLocaleTimeString([], { hour: "numeric" }),
-      temperature: formatTemp(weather.hourly.temperature_2m?.[idx]),
-      feelsLike: formatTemp(weather.hourly.apparent_temperature?.[idx]),
-    }));
-  }, [weather]);
+  const getSummary = (data, isDaily = false) => {
+  let t, wind = 0, humidity = 50; 
 
-  const dailyPreview = useMemo(() => {
-    if (!weather?.daily?.time?.length) return [];
-    return weather.daily.time.slice(0, 3).map((time, idx) => ({
-      date: new Date(time).toLocaleDateString([], { weekday: "short" }),
-      max: formatTemp(weather.daily.temperature_2m_max?.[idx]),
-      min: formatTemp(weather.daily.temperature_2m_min?.[idx]),
-    }));
-  }, [weather]);
+  if (isDaily) {
+    t = (data.max + data.min) / 2;
+    if (data.wind !== undefined) wind = data.wind;
+    if (data.humidity !== undefined) humidity = data.humidity;
+  } else if (data?.current) {
+    t = data.current.temperature_2m;
+    wind = data.current.wind_speed_10m;
+    humidity = data.current.relative_humidity_2m;
+  } else {
+    return "Weather data unavailable.";
+  }
 
-  const getSummary = (weather) => {
-    if (!weather?.current) return "";
-
-      const t = weather.current.temperature_2m;
-      const wind = weather.current.wind_speed_10m;
-      const humidity = weather.current.relative_humidity_2m;
-
-      const parts = [];
+   const parts = [];
 
         if (t <= 0) parts.push("Freezing conditions, bundle up! "); 
         else if (t <= 5) parts.push("Chilly weather outside, possible frost in places. ");
@@ -134,10 +124,35 @@ export default function Home() {
         else parts.push("Extremely humid. ");
 
         return parts.join("");
-
-      return "Weather data unavailable.";
   };
 
+
+  const hourlyPreview = useMemo(() => {
+    if (!weather?.hourly?.time?.length) return [];
+    return weather.hourly.time.slice(0, 6).map((time, idx) => ({
+      time: new Date(time).toLocaleTimeString([], { hour: "numeric" }),
+      temperature: formatTemp(weather.hourly.temperature_2m?.[idx]),
+      feelsLike: formatTemp(weather.hourly.apparent_temperature?.[idx]),
+    }));
+  }, [weather]);
+
+  const dailyPreview = useMemo(() => {
+    if (!weather?.daily?.time?.length) return [];
+
+    return weather.daily.time.slice(0, 3).map((time, idx) => {
+      const max = formatTemp(weather.daily.temperature_2m_max?.[idx]);
+      const min = formatTemp(weather.daily.temperature_2m_min?.[idx]);
+
+      return {
+      date: new Date(time).toLocaleDateString([], { weekday: "short" }),
+        max,
+        min,
+      summary: getSummary({max, min}, true),
+    };
+  });
+  }, [weather]);
+
+  
   const handleSearch = async (event) => {
     event.preventDefault();
     if (!query.trim()) return;
@@ -330,6 +345,8 @@ export default function Home() {
                   <div className="text-sm text-white/80">{day.date}</div>
                   <div className="text-2xl font-semibold">{day.max}°</div>
                   <div className="text-white/70">Low {day.min}°</div>
+                  <div className="text-sm text-white/70">{day.summary}</div>
+                  
                 </div>
               ))}
               {!dailyPreview.length && (
