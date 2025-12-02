@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { RainLayer } from "@/components/RainLayer";
 import { Droplets, MapPin, Search, Sun, Thermometer, Wind } from "lucide-react";
 
 const GEO_URL = "https://geocoding-api.open-meteo.com/v1/search";
@@ -18,8 +19,61 @@ const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 const formatTemp = (value) =>
   value === undefined || value === null ? "--" : Math.round(value);
 
+const rainyCodes = [
+  51, 53, 55, 56, 57, 61, 63, 65, 80, 81, 82, 95, 96, 99,
+];
+
+const rainFromCode = (code, windSpeed) => {
+  if (code === undefined || code === null) return { enabled: false };
+  const drizzle = [51, 53, 55, 56, 57];
+  const rain = [61, 63, 65, 80, 81, 82];
+  const storm = [95, 96, 99];
+  if (drizzle.includes(code)) {
+    return { enabled: true, intensity: 0.6, wind: (windSpeed || 0) * 0.03 };
+  }
+  if (rain.includes(code)) {
+    return { enabled: true, intensity: 1.1, wind: (windSpeed || 0) * 0.04 };
+  }
+  if (storm.includes(code)) {
+    return { enabled: true, intensity: 1.5, wind: (windSpeed || 0) * 0.06 };
+  }
+  return { enabled: false };
+};
+
+const conditionFromCode = (code) => {
+  if (code === undefined || code === null) return "";
+  if (code === 0) return "Sunny";
+  if (code === 1 || code === 2) return "Partly cloudy";
+  if (code === 3) return "Overcast";
+  if (code === 45 || code === 48) return "Foggy";
+  if ([51, 53, 55, 56, 57].includes(code)) return "Drizzle";
+  if ([61, 63, 65].includes(code)) return "Raining";
+  if (code === 66 || code === 67) return "Freezing rain";
+  if ([71, 73, 75].includes(code)) return "Snowing";
+  if (code === 77) return "Snow grains";
+  if ([80, 81, 82].includes(code)) return "Showers";
+  if (code === 85 || code === 86) return "Snow showers";
+  if ([95, 96, 99].includes(code)) return "Thunderstorm";
+  return "";
+};
+
+const backgroundFromWeather = (code, isDay) => {
+  const day = isDay === 1;
+  const rainy = code !== undefined && code !== null && rainyCodes.includes(code);
+
+  if (rainy) {
+    return day
+      ? "bg-gradient-to-b from-slate-200 via-sky-400 to-slate-600"
+      : "bg-gradient-to-b from-indigo-800 via-slate-900 to-black";
+  }
+
+  return day
+    ? "bg-gradient-to-b from-sky-300 via-cyan-400 to-blue-600"
+    : "bg-gradient-to-b from-indigo-900 to-slate-900";
+};
+
 export default function Home() {
-  const [query, setQuery] = useState("Berlin");
+  const [query, setQuery] = useState("Sheffield");
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -104,7 +158,7 @@ export default function Home() {
       const { latitude, longitude, name, country } = location;
 
       const forecastRes = await fetch(
-        `${FORECAST_URL}?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m&hourly=temperature_2m,apparent_temperature&daily=temperature_2m_max,temperature_2m_min&timezone=auto`
+        `${FORECAST_URL}?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day&hourly=temperature_2m,apparent_temperature&daily=temperature_2m_max,temperature_2m_min&timezone=auto`
       );
       if (!forecastRes.ok) throw new Error("Could not load forecast");
       const forecast = await forecastRes.json();
@@ -124,9 +178,32 @@ export default function Home() {
     }
   };
 
+  const rain = useMemo(
+    () => rainFromCode(weather?.current?.weather_code, weather?.current?.wind_speed_10m),
+    [weather]
+  );
+
+  const background = useMemo(
+    () => backgroundFromWeather(weather?.current?.weather_code, weather?.current?.is_day),
+    [weather]
+  );
+
+  const conditionLabel = useMemo(
+    () => conditionFromCode(weather?.current?.weather_code),
+    [weather]
+  );
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-500 to-purple-700 text-white">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-10">
+    <div className={`relative min-h-screen overflow-hidden text-white ${background}`}>
+      {rain.enabled && (
+        <RainLayer
+          intensity={rain.intensity}
+          wind={rain.wind}
+          color="rgba(255,255,255,0.45)"
+          trailAlpha={0.08}
+        />
+      )}
+      <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-10">
         <header className="space-y-2">
           <p className="text-sm uppercase tracking-[0.2em] text-white/80">
             Open-Meteo Weather
@@ -196,6 +273,9 @@ export default function Home() {
               <div className="text-white/80 text-sm">
                   {weather.summary}
               </div>
+              {conditionLabel && (
+                <div className="text-sm text-white/80">Conditions: {conditionLabel}</div>
+              )}
               <div className="grid grid-cols-2 gap-3 text-sm text-white/80">
                   <div className="flex items-center gap-2">
                     <Wind className="h-4 w-4" />
