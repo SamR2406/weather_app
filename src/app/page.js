@@ -42,6 +42,48 @@ export default function Home() {
     }));
   }, [weather]);
 
+  const getSummary = (weather) => {
+    if (!weather?.current) return "";
+
+      const t = weather.current.temperature_2m;
+      const wind = weather.current.wind_speed_10m;
+      const humidity = weather.current.relative_humidity_2m;
+
+      const parts = [];
+
+        if (t <= 0) parts.push("Freezing conditions, bundle up! "); 
+        else if (t <= 5) parts.push("Chilly weather outside, possible frost in places. ");
+        else if (t <= 10) parts.push("Cool out today. ");
+        else if (t <= 20) parts.push("Mild out, light jacket rcommended. ");
+        else if (t <= 25) parts.push("Warm and pleasant. ");
+        else if (t <= 30) parts.push("Warm to hot weather today. ");
+        else if (t <= 35) parts.push("It's set to be hot today.");
+        else if (t <= 40) parts.push("Hot temperatures today, stay inside during peak sunlight hours. ");
+        else parts.push("Very hot outdoors, stay hydrated, avoid strenuous activity and keep pets inside. ");
+
+        if (wind <= 1) parts.push("Calm and still. ");
+        else if (wind <= 6) parts.push("Gentle breeze. ");
+        else if (wind <= 20) parts.push("Moderate breeze. ");
+        else if (wind <= 30) parts.push("Fresh breeze. ");
+        else if (wind <= 40) parts.push("Strong breeze today, hang on to your hat! ");
+        else if (wind <= 50) parts.push("Very strong winds, take care. ");
+        else if (wind <= 60) parts.push("Gale force winds. Hard to walk outside. ");
+        else if (wind <= 75) parts.push("Strong gales - watch out for debris. ");
+        else if (wind <= 89) parts.push("Stormy conditions, stay indoors! ");
+        else if (wind <= 100) parts.push("Extreme wind damage likely - do not go outside, stay away from windows. ");
+        else parts.push("Hurricane force winds - seek shelter immediately! ");
+
+        if (humidity <= 20) parts.push("Very dry air. ");
+        else if (humidity <= 40) parts.push("Comfortable humidity levels. ");
+        else if (humidity <= 60) parts.push("A bit humid today. ");
+        else if (humidity <= 80) parts.push("High humidity. ");
+        else parts.push("Extremely humid. ");
+
+        return parts.join("");
+
+      return "Weather data unavailable.";
+  };
+
   const handleSearch = async (event) => {
     event.preventDefault();
     if (!query.trim()) return;
@@ -72,7 +114,9 @@ export default function Home() {
         current: forecast.current,
         hourly: forecast.hourly,
         daily: forecast.daily,
+        summary: getSummary(forecast),
       });
+
     } catch (err) {
       setError(err?.message || "Something went wrong. Please try again.");
     } finally {
@@ -148,6 +192,9 @@ export default function Home() {
                 <span className="text-white/70">
                   feels like {formatTemp(weather.current?.apparent_temperature)}°
                 </span>
+              </div>
+              <div className="text-white/80 text-sm">
+                  {weather.summary}
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm text-white/80">
                   <div className="flex items-center gap-2">
