@@ -1,11 +1,11 @@
 import { useEffect, useRef } from "react";
 
 export function SunLayer({
-  intensity = 120,               // number of rays
-  color = "rgba(255, 220, 80, 0.35)", // yellow
-  rayLength = "",              // length of each ray
-  rayWidth = 35,               // thickness of each ray
-  pulseSpeed = 0.005,           // speed of fade in/out
+  intensity = 120,               
+  color = "rgba(255, 220, 80, 0.35)", 
+  rayLength = "",              
+  rayWidth = 35,              
+  pulseSpeed = 0.005,           
 }) {
   const canvasRef = useRef(null);
 
@@ -17,20 +17,21 @@ export function SunLayer({
     let width = 0;
     let height = 0;
     let rafId;
-
     let rays = [];
 
     const resize = () => {
       width = canvas.clientWidth;
       height = canvas.clientHeight;
+
       const dpr = window.devicePixelRatio || 1;
       canvas.width = width * dpr;
       canvas.height = height * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-        const maxRayLength = Math.sqrt(width * width + height * height);
+      const maxRayLength = Math.sqrt(width * width + height * height);
 
       const count = Math.max(10, Math.floor(intensity * 20));
+
       rays = Array.from({ length: count }, (_, i) => ({
         angle: (Math.PI / 2) * (i / (count - 1)), 
         alpha: Math.random() * 0.5 + 0.2,   
@@ -41,6 +42,11 @@ export function SunLayer({
 
     const draw = () => {
       ctx.clearRect(0, 0, width, height);
+
+      ctx.shadowBlur = 45;
+      ctx.shadowColor = "rgba(255, 240, 150, 0.5)";
+
+      ctx.globalCompositeOperation = "lighter";
 
       rays.forEach((ray) => {
         // Update alpha for pulse
@@ -54,8 +60,9 @@ export function SunLayer({
 
         // Gradient along the ray
         const gradient = ctx.createLinearGradient(0, 0, x2, y2);
-        gradient.addColorStop(0, `rgba(255,220,80,${ray.alpha.toFixed(3)})`);
-        gradient.addColorStop(1, "rgba(255,220,80,0)");
+        gradient.addColorStop(0, `rgba(255, 230, 120, ${ray.alpha})`);
+        gradient.addColorStop(0.3, `rgba(255, 230, 120, ${ray.alpha * 0.4})`);
+        gradient.addColorStop(1, "rgba(255, 230, 120, 0)");
 
         ctx.strokeStyle = gradient;
         ctx.lineWidth = rayWidth;
