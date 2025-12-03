@@ -183,13 +183,19 @@ export default function Home() {
     return weather.daily.time.slice(0, 7).map((time, idx) => {
       const maxRaw = weather.daily.temperature_2m_max?.[idx];
       const minRaw = weather.daily.temperature_2m_min?.[idx];
+      const avgRaw =
+        maxRaw !== undefined && minRaw !== undefined
+          ? (maxRaw + minRaw) / 2
+          : undefined;
       const max = formatTemp(maxRaw);
       const min = formatTemp(minRaw);
+      const avg = formatTemp(avgRaw);
 
       return {
         date: time,
         max,
         min,
+        avg,
         summary: getSummary({ max: maxRaw, min: minRaw }, true),
       };
     });
@@ -221,12 +227,17 @@ export default function Home() {
       if (!forecastRes.ok) throw new Error("Could not load forecast");
       const forecast = await forecastRes.json();
 
+      const todayHigh = forecast?.daily?.temperature_2m_max?.[0];
+      const todayLow = forecast?.daily?.temperature_2m_min?.[0];
+
       setWeather({
         location: `${name}${country ? `, ${country}` : ""}`,
         current: forecast.current,
         hourly: forecast.hourly,
         daily: forecast.daily,
         summary: getSummary(forecast),
+        todayHigh,
+        todayLow,
       });
 
     } catch (err) {
@@ -329,6 +340,9 @@ export default function Home() {
                   feels like {formatTemp(weather.current?.apparent_temperature)}°
                 </span>
               </div>
+              <div className="text-sm text-white/70">
+                High {formatTemp(weather.todayHigh)}° · Low {formatTemp(weather.todayLow)}°
+              </div>
               <div className="text-white/80 text-sm">
                   {weather.summary}
               </div>
@@ -394,8 +408,8 @@ export default function Home() {
             })}
           </div>
                   <div className="text-sm text-white/80">{day.date}</div>
-                  <div className="text-2xl font-semibold">{day.max}°</div>
-                  <div className="text-white/70">Low {day.min}°</div>
+                  <div className="text-2xl font-semibold">{day.avg}°</div>
+                  <div className="text-white/70 text-sm">High {day.max}° · Low {day.min}°</div>
                   <div className="text-sm text-white/70">{day.summary}</div>
                   
                 </div>
