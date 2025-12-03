@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -33,6 +33,15 @@ const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 
 const formatTemp = (value) =>
   value === undefined || value === null ? "--" : Math.round(value);
+
+const formatNumber = (value, digits = 1) =>
+  value === undefined || value === null ? "--" : Number(value).toFixed(digits);
+
+const formatTime = (value, options = {}) => {
+  if (!value) return "--";
+  const date = new Date(value);
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", ...options });
+};
 
 const rainyCodes = [
   51, 53, 55, 56, 57, 61, 63, 65, 80, 81, 82, 95, 96, 99,
@@ -143,6 +152,7 @@ export default function Home() {
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [selectedDay, setSelectedDay] = useState({ type: "current" });
 
   const hourlyPreview = useMemo(() => {
     if (!weather?.hourly?.time?.length) return [];
@@ -183,6 +193,12 @@ export default function Home() {
     return weather.daily.time.slice(0, 7).map((time, idx) => {
       const maxRaw = weather.daily.temperature_2m_max?.[idx];
       const minRaw = weather.daily.temperature_2m_min?.[idx];
+      const sunrise = weather.daily.sunrise?.[idx];
+      const sunset = weather.daily.sunset?.[idx];
+      const gustMax = weather.daily.wind_gusts_10m_max?.[idx];
+      const precipTotal = weather.daily.precipitation_sum?.[idx];
+      const precipProb = weather.daily.precipitation_probability_max?.[idx];
+      const uvMax = weather.daily.uv_index_max?.[idx];
       const avgRaw =
         maxRaw !== undefined && minRaw !== undefined
           ? (maxRaw + minRaw) / 2
@@ -196,6 +212,12 @@ export default function Home() {
         max,
         min,
         avg,
+        sunrise,
+        sunset,
+        gustMax,
+        precipTotal,
+        precipProb,
+        uvMax,
         summary: getSummary({ max: maxRaw, min: minRaw }, true),
       };
     });
@@ -222,7 +244,7 @@ export default function Home() {
       const { latitude, longitude, name, country } = location;
 
       const forecastRes = await fetch(
-        `${FORECAST_URL}?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day&hourly=temperature_2m,apparent_temperature&daily=temperature_2m_max,temperature_2m_min&timezone=auto`
+        `${FORECAST_URL}?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,weather_code,is_day,pressure_msl,cloud_cover,visibility&hourly=temperature_2m,apparent_temperature&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,wind_gusts_10m_max,precipitation_sum,precipitation_probability_max,uv_index_max&timezone=auto`
       );
       if (!forecastRes.ok) throw new Error("Could not load forecast");
       const forecast = await forecastRes.json();
@@ -239,6 +261,7 @@ export default function Home() {
         todayHigh,
         todayLow,
       });
+      setSelectedDay({ type: "current" });
 
     } catch (err) {
       setError(err?.message || "Something went wrong. Please try again.");
@@ -261,6 +284,64 @@ export default function Home() {
     () => conditionFromCode(weather?.current?.weather_code),
     [weather]
   );
+
+  useEffect(() => {
+    if (weather) setSelectedDay({ type: "current" });
+  }, [weather]);
+
+  const selectedDetail = useMemo(() => {
+    if (!weather || !selectedDay) return null;
+    if (selectedDay.type === "current") {
+      return {
+        title: "Current conditions",
+        dateLabel: getCurrentDate(),
+        summary: weather.summary,
+        temp: formatTemp(weather.current?.temperature_2m),
+        feelsLike: formatTemp(weather.current?.apparent_temperature),
+        high: formatTemp(weather.todayHigh),
+        low: formatTemp(weather.todayLow),
+        wind: weather.current?.wind_speed_10m,
+        humidity: weather.current?.relative_humidity_2m,
+        gust: weather.current?.wind_gusts_10m,
+        pressure: weather.current?.pressure_msl,
+        cloudCover: weather.current?.cloud_cover,
+        visibilityKm:
+          weather.current?.visibility !== undefined && weather.current?.visibility !== null
+            ? weather.current.visibility / 1000
+            : undefined,
+      };
+    }
+
+    if (selectedDay.type === "daily") {
+      const day = dailyPreview[selectedDay.index];
+      if (!day) return null;
+
+      const dateLabel = new Date(day.date).toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+      });
+
+      return {
+        title: "Day outlook",
+        dateLabel,
+        summary: day.summary,
+        temp: day.avg,
+        high: day.max,
+        low: day.min,
+        sunrise: day.sunrise,
+        sunset: day.sunset,
+        gustMax: day.gustMax,
+        precipTotal: day.precipTotal,
+        precipProb: day.precipProb,
+        uvMax: day.uvMax,
+        wind: undefined,
+        humidity: undefined,
+      };
+    }
+
+    return null;
+  }, [dailyPreview, selectedDay, weather]);
 
   return (
     <div className={`relative min-h-screen overflow-hidden text-white ${background}`}>
@@ -320,7 +401,12 @@ export default function Home() {
 
         {weather && (
           <div className="grid gap-4 md:grid-cols-2">
-            <Card className="backdrop-blur bg-white/10 text-white border-white/20 shadow-lg">
+            <Card
+              className={`backdrop-blur bg-white/10 text-white border-white/20 shadow-lg cursor-pointer ${
+                selectedDay?.type === "current" ? "border-white/50" : ""
+              }`}
+              onClick={() => setSelectedDay({ type: "current" })}
+            >
               <CardHeader className="flex flex-row items-start justify-between">
                 <div className="space-y-1">
                   <CardTitle>{weather.location}</CardTitle>
@@ -395,27 +481,129 @@ export default function Home() {
               <CardTitle>7-day outlook</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 md:grid-cols-4">
-              {dailyPreview.map((day) => (
-                <div
-                  key={day.date}
-                  className="rounded-lg border border-white/15 bg-white/5 p-4 space-y-2"
-                >
-                  <div className="text-sm text-white/80">
+              {dailyPreview.map((day, idx) => {
+                const isSelected =
+                  selectedDay?.type === "daily" && selectedDay.index === idx;
+                return (
+                  <div
+                    key={day.date}
+                    className={`rounded-lg border bg-white/5 p-4 space-y-2 cursor-pointer ${
+                      isSelected ? "border-white/50" : "border-white/15"
+                    }`}
+                    onClick={() => setSelectedDay({ type: "daily", index: idx })}
+                  >
+                    <div className="text-sm text-white/80">
             {new Date(day.date).toLocaleDateString('en-US', {
               weekday: 'short', 
               month: 'short',   
               day: 'numeric'    
             })}
           </div>
-                  <div className="text-sm text-white/80">{day.date}</div>
-                  <div className="text-2xl font-semibold">{day.avg}°</div>
-                  <div className="text-white/70 text-sm">High {day.max}° · Low {day.min}°</div>
-                  <div className="text-sm text-white/70">{day.summary}</div>
-                  
-                </div>
-              ))}
+                    <div className="text-sm text-white/80">{day.date}</div>
+                    <div className="text-2xl font-semibold">{day.avg}°</div>
+                    <div className="text-white/70 text-sm">High {day.max}° · Low {day.min}°</div>
+                    <div className="text-sm text-white/70">{day.summary}</div>
+                    
+                  </div>
+                );
+              })}
               {!dailyPreview.length && (
                 <p className="text-white/70">No daily outlook available.</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {selectedDetail && (
+          <Card className="backdrop-blur bg-white/10 text-white border-white/20 shadow-lg">
+            <CardHeader className="flex flex-col gap-1">
+              <CardTitle>{selectedDetail.title}</CardTitle>
+              <CardDescription className="text-white/70">
+                {selectedDetail.dateLabel}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="text-sm text-white/80">{selectedDetail.summary}</div>
+              <div className="flex flex-wrap items-center gap-4 text-sm text-white/80">
+                <div className="text-3xl font-semibold">{selectedDetail.temp}°</div>
+                <div className="text-white/70">
+                  High {selectedDetail.high ?? "--"}° · Low {selectedDetail.low ?? "--"}°
+                </div>
+                {selectedDetail.feelsLike !== undefined && (
+                  <div className="text-white/70">Feels like {selectedDetail.feelsLike}°</div>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-sm text-white/80">
+                {selectedDetail.wind !== undefined && (
+                  <div className="flex items-center gap-2">
+                    <Wind className="h-4 w-4" />
+                    <span>Wind {selectedDetail.wind ?? "--"} km/h</span>
+                  </div>
+                )}
+                {selectedDetail.humidity !== undefined && (
+                  <div className="flex items-center gap-2">
+                    <Droplets className="h-4 w-4" />
+                    <span>Humidity {selectedDetail.humidity ?? "--"}%</span>
+                  </div>
+                )}
+                {selectedDetail.gust !== undefined && (
+                  <div className="flex items-center gap-2">
+                    <Wind className="h-4 w-4" />
+                    <span>Gusts {selectedDetail.gust ?? "--"} km/h</span>
+                  </div>
+                )}
+                {selectedDetail.pressure !== undefined && (
+                  <div className="flex items-center gap-2">
+                    <Thermometer className="h-4 w-4" />
+                    <span>Pressure {formatNumber(selectedDetail.pressure, 0)} hPa</span>
+                  </div>
+                )}
+                {selectedDetail.cloudCover !== undefined && (
+                  <div className="flex items-center gap-2">
+                    <Sun className="h-4 w-4" />
+                    <span>Cloud cover {selectedDetail.cloudCover ?? "--"}%</span>
+                  </div>
+                )}
+                {selectedDetail.visibilityKm !== undefined && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    <span>Visibility {formatNumber(selectedDetail.visibilityKm, 1)} km</span>
+                  </div>
+                )}
+                {selectedDetail.precipProb !== undefined && (
+                  <div className="flex items-center gap-2">
+                    <Droplets className="h-4 w-4" />
+                    <span>Rain chance {selectedDetail.precipProb ?? "--"}%</span>
+                  </div>
+                )}
+                {selectedDetail.precipTotal !== undefined && (
+                  <div className="flex items-center gap-2">
+                    <Droplets className="h-4 w-4" />
+                    <span>Rain total {formatNumber(selectedDetail.precipTotal, 1)} mm</span>
+                  </div>
+                )}
+                {selectedDetail.gustMax !== undefined && (
+                  <div className="flex items-center gap-2">
+                    <Wind className="h-4 w-4" />
+                    <span>Max gust {selectedDetail.gustMax ?? "--"} km/h</span>
+                  </div>
+                )}
+                {selectedDetail.uvMax !== undefined && (
+                  <div className="flex items-center gap-2">
+                    <Sun className="h-4 w-4" />
+                    <span>UV index {formatNumber(selectedDetail.uvMax, 1)}</span>
+                  </div>
+                )}
+              </div>
+              {(selectedDetail.sunrise || selectedDetail.sunset) && (
+                <div className="flex flex-wrap gap-4 text-sm text-white/80">
+                  {selectedDetail.sunrise && (
+                    <div>Sunrise {formatTime(selectedDetail.sunrise)}</div>
+                  )}
+                  {selectedDetail.sunset && (
+                    <div>Sunset {formatTime(selectedDetail.sunset)}</div>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>
