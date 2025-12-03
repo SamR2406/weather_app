@@ -4,7 +4,7 @@ export function CloudLayer({
   intensity = 1,
   wind = 3,
   color = "rgba(200,200,200,0.05)",
-  trailAlpha = 0.03 - 0.05,
+  trailAlpha = 0.03
 }) {
   const canvasRef = useRef(null);
 
@@ -33,16 +33,16 @@ export function CloudLayer({
         x: Math.random() * width,
         y: Math.random() * height,
 
-        radius: 100 + Math.random() * 70,
+        radius: 100 + Math.random() * 80,
         speedX: (Math.random() - 0.5) * 0.2,
         speedY: (Math.random() - 0.5) * 0.1,
-        opacity: 0.01 + Math.random() * 0.02,
+        opacity: 0.035 + Math.random() * 0.1,
       }));
     };
 
     const draw = () => {
 
-      ctx.fillStyle = `rgba(34,73,131,${trailAlpha})`;
+      ctx.fillStyle = `rgba(0,80,200,${trailAlpha})`;
       ctx.fillRect(0, 0, width, height);
 
       clouds.forEach((cloud) => {
@@ -50,8 +50,8 @@ export function CloudLayer({
           cloud.x, cloud.y, 0,
           cloud.x, cloud.y, cloud.radius
         );
-        gradient.addColorStop(0, `rgba(180,180,180,${cloud.opacity})`);
-        gradient.addColorStop(1, "rgba(180,180,255,1)");
+        gradient.addColorStop(0, `rgba(180,180,255,1${cloud.opacity})`);
+        gradient.addColorStop(1, "rgba(180,180,255,0)");
        
         ctx.fillStyle = gradient;
         ctx.beginPath();

@@ -12,9 +12,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { RainLayer } from "@/components/RainLayer";
 import { Droplets, MapPin, Search, Sun, Thermometer, Wind } from "lucide-react";
-
 import { SunLayer } from "@/components/SunLayer";
-import {CloudLayer} from "@/components/CloudLayer";
+import { CloudLayer } from "@/components/CloudLayer";
 
 function getOrdinal(n) {
   const s = ["th", "st", "nd", "rd"];
@@ -153,7 +152,7 @@ const getSummary = (data, isDaily = false) => {
   else if (t <= 20) parts.push("Mild out, light jacket rcommended. ");
   else if (t <= 25) parts.push("Warm and pleasant. ");
   else if (t <= 30) parts.push("Warm to hot weather today. ");
-  else if (t <= 35) parts.push("It's set to be hot today.");
+  else if (t <= 35) parts.push("It's set to be hot today. ");
   else if (t <= 40) parts.push("Hot temperatures today, stay inside during peak sunlight hours. ");
   else parts.push("Very hot outdoors, stay hydrated, avoid strenuous activity and keep pets inside. ");
 
@@ -301,11 +300,6 @@ export default function Home() {
     }
   };
 
-  const rain = useMemo(
-    () => rainFromCode(weather?.current?.weather_code, weather?.current?.wind_speed_10m),
-    [weather]
-  );
-
   const sunshine = useMemo(() => {
     const sun = sunshineFromCode(weather?.current?.weather_code);
   return {
@@ -316,12 +310,17 @@ export default function Home() {
 
   const clouds = useMemo(() => {
   const cloud = cloudsFromCode(weather?.current?.weather_code);
+  const rainEnabled = rainFromCode(weather?.current?.weather_code).enabled;
   return {
     ...cloud,
-    disableSun: cloud.intensity >= 0.7,
+    sunFactor: rainEnabled ? 0 : 1 - cloud.intensity,
   };
 }, [weather]);
 
+ const rain = useMemo(
+    () => rainFromCode(weather?.current?.weather_code, weather?.current?.wind_speed_10m),
+    [weather]
+  );
 
   const background = useMemo(
     () => backgroundFromWeather(weather?.current?.weather_code, weather?.current?.is_day),
@@ -393,13 +392,9 @@ export default function Home() {
 
   return (
     <div className={`relative min-h-screen overflow-hidden text-white ${background}`}>
-      {rain.enabled && (
-        <RainLayer
-          intensity={rain.intensity}
-          wind={rain.wind}
-          color="rgba(255,255,255,0.45)"
-          trailAlpha={0.08}
-        />
+      
+      {sunshine.enabled && !rain.enabled && (
+        <SunLayer intensity={sunshine.intensity * clouds.sunFactor} />
       )}
 
       {clouds.enabled && (
@@ -411,9 +406,12 @@ export default function Home() {
         />
       )}
 
-       {sunshine.enabled && !rain.enabled && !clouds.disableSun &&(
-        <SunLayer 
-          intensity={sunshine.intensity} 
+      {rain.enabled && (
+        <RainLayer
+          intensity={rain.intensity}
+          wind={rain.wind}
+          color="rgba(255,255,255,0.45)"
+          trailAlpha={0.08}
         />
       )}
 
