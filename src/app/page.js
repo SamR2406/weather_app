@@ -14,6 +14,7 @@ import { RainLayer } from "@/components/RainLayer";
 import { Droplets, MapPin, Search, Sun, Thermometer, Wind } from "lucide-react";
 
 import { SunLayer } from "@/components/SunLayer";
+import {CloudLayer} from "@/components/CloudLayer";
 
 function getOrdinal(n) {
   const s = ["th", "st", "nd", "rd"];
@@ -62,6 +63,27 @@ const sunshineFromCode = (code) => {
   if (code === 1) return { enabled: true, intensity: 0.8 }; // Mostly clear
   if (code === 2) return { enabled: true, intensity: 0.5 }; // Partly cloudy
   return { enabled: false };
+};
+
+const cloudsFromCode = (code) => {
+  // Basic mapping for sunny/cloudy/overcast
+  if (code === 0 || code === 1) {
+    // Sunny / mostly clear
+    return { enabled: false, intensity: 0, wind: 0 };
+  }
+  if (code === 2) {
+    // Partly cloudy
+    return { enabled: true, intensity: 0.4, wind: 0.05 };
+  }
+  if (code === 3 || code === 45 || code === 48) {
+    // Mostly cloudy / overcast / foggy
+    return { enabled: true, intensity: 0.8, wind: 0.1 };
+  }
+  // If raining, clouds always appear
+  if (rainyCodes.includes(code)) {
+    return { enabled: true, intensity: 1, wind: 0.15 };
+  }
+  return { enabled: false, intensity: 0, wind: 0 };
 };
 
 const conditionFromCode = (code) => {
@@ -269,6 +291,14 @@ export default function Home() {
   };
   }, [weather]);
 
+  const clouds = useMemo(() => {
+  const cloud = cloudsFromCode(weather?.current?.weather_code);
+  return {
+    ...cloud,
+    disableSun: cloud.intensity >= 0.7,
+  };
+}, [weather]);
+
 
   const background = useMemo(
     () => backgroundFromWeather(weather?.current?.weather_code, weather?.current?.is_day),
@@ -291,7 +321,16 @@ export default function Home() {
         />
       )}
 
-       {sunshine.enabled && !rain.enabled && (
+      {clouds.enabled && (
+        <CloudLayer
+          intensity={clouds.intensity}
+          wind={clouds.wind}
+          color="rgba(255,255,255,0.08)"
+          trailAlpha={0.03}
+        />
+      )}
+
+       {sunshine.enabled && !rain.enabled && !clouds.disableSun &&(
         <SunLayer 
           intensity={sunshine.intensity} 
         />
