@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { RainLayer } from "@/components/RainLayer";
 import { Droplets, MapPin, Search, Sun, Thermometer, Wind } from "lucide-react";
 
+import { SunLayer } from "@/components/SunLayer";
+
 function getOrdinal(n) {
   const s = ["th", "st", "nd", "rd"];
   const v = n % 100;
@@ -52,6 +54,13 @@ const rainFromCode = (code, windSpeed) => {
   if (storm.includes(code)) {
     return { enabled: true, intensity: 1.5, wind: (windSpeed || 0) * 0.06 };
   }
+  return { enabled: false };
+};
+
+const sunshineFromCode = (code) => {
+  if (code === 0) return { enabled: true, intensity: 1.2 }; // Sunny
+  if (code === 1) return { enabled: true, intensity: 0.8 }; // Mostly clear
+  if (code === 2) return { enabled: true, intensity: 0.5 }; // Partly cloudy
   return { enabled: false };
 };
 
@@ -252,6 +261,15 @@ export default function Home() {
     [weather]
   );
 
+  const sunshine = useMemo(() => {
+    const sun = sunshineFromCode(weather?.current?.weather_code);
+  return {
+    ...sun,
+    enabled:sun.enabled && weather?.current?.is_day === 1
+  };
+  }, [weather]);
+
+
   const background = useMemo(
     () => backgroundFromWeather(weather?.current?.weather_code, weather?.current?.is_day),
     [weather]
@@ -272,6 +290,13 @@ export default function Home() {
           trailAlpha={0.08}
         />
       )}
+
+       {sunshine.enabled && !rain.enabled && (
+        <SunLayer 
+          intensity={sunshine.intensity} 
+        />
+      )}
+
       <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-10">
         <header className="space-y-2">
           <p className="text-sm uppercase tracking-[0.2em] text-white/80">
