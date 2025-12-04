@@ -12,10 +12,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { RainLayer } from "@/components/RainLayer";
 import { StarLayer } from "@/components/StarLayer";
-import { Droplets, MapPin, Search, Sun, Thermometer, Wind } from "lucide-react";
+import { Droplets, MapPin, Search, Sun, Thermometer, Wind, AlertTriangle, ChevronDown } from "lucide-react";
 import { SunLayer } from "@/components/SunLayer";
 import { CloudLayer } from "@/components/CloudLayer";
 import { SnowLayer } from "@/components/SnowLayer";
+import { WindLayer } from "@/components/WindLayer";
 
 function getOrdinal(n) {
   const s = ["th", "st", "nd", "rd"];
@@ -136,6 +137,19 @@ const snowFromCode = (code, windSpeed) => {
   return { enabled: true, intensity: 1, wind: (windSpeed || 0) * 0.025 };
 };
 
+const windEffectFromSpeed = (windSpeed, gust) => {
+  const speed = windSpeed || 0;
+  const gustVal = gust || 0;
+  const level = Math.max(speed, gustVal * 0.8);
+  if (level < 18) return { enabled: false };
+  const norm = Math.min(1.8, level / 18);
+  return {
+    enabled: true,
+    intensity: norm,
+    speed: 0.8 + level / 25,
+  };
+};
+
 const sunshineFromCode = (code) => {
   if (code === 0) return { enabled: true, intensity: 1.2 }; // Sunny
   if (code === 1) return { enabled: true, intensity: 0.8 }; // Mostly clear
@@ -181,14 +195,28 @@ const conditionFromCode = (code) => {
   return "";
 };
 
-const backgroundFromWeather = (code, isDay) => {
+const backgroundFromWeather = (code, isDay, windSpeed = 0, gust = 0) => {
   const day = isDay === 1;
   const rainy = code !== undefined && code !== null && rainyCodes.includes(code);
+  const snowy = code !== undefined && code !== null && snowyCodes.includes(code);
+  const windy = Math.max(windSpeed || 0, (gust || 0) * 0.8) >= 18;
+
+  if (snowy) {
+    return day
+      ? "bg-gradient-to-b from-slate-100 via-sky-200 to-slate-300"
+      : "bg-gradient-to-b from-slate-900 via-blue-900 to-indigo-950";
+  }
 
   if (rainy) {
     return day
       ? "bg-gradient-to-b from-slate-200 via-sky-400 to-slate-600"
       : "bg-gradient-to-b from-indigo-800 via-slate-900 to-black";
+  }
+
+  if (windy) {
+    return day
+      ? "bg-gradient-to-b from-slate-200 via-cyan-200 to-slate-400"
+      : "bg-gradient-to-b from-slate-900 via-cyan-950 to-slate-950";
   }
 
   return day
@@ -219,7 +247,7 @@ const getSummary = (data, isDaily = false) => {
   if (t <= 0) parts.push("Freezing conditions, bundle up! ");
   else if (t <= 5) parts.push("Chilly weather outside, possible frost in places. ");
   else if (t <= 10) parts.push("Cool out today. ");
-  else if (t <= 20) parts.push("Mild out, light jacket rcommended. ");
+  else if (t <= 20) parts.push("Mild out, light jacket recommended. ");
   else if (t <= 25) parts.push("Warm and pleasant. ");
   else if (t <= 30) parts.push("Warm to hot weather today. ");
   else if (t <= 35) parts.push("It's set to be hot today. ");
@@ -240,7 +268,7 @@ const getSummary = (data, isDaily = false) => {
 
   if (humidity <= 20) parts.push("Very dry air. ");
   else if (humidity <= 40) parts.push("Comfortable humidity levels. ");
-  else if (humidity <= 60) parts.push("A bit humid today. ");
+  else if (humidity <= 60) parts.push("A bit humid. ");
   else if (humidity <= 80) parts.push("High humidity. ");
   else parts.push("Extremely humid. ");
 
@@ -252,6 +280,7 @@ const demoScenarios = [
   { label: "Cloudy", code: 3, temp: 12, wind: 10, isDay: 1 },
   { label: "Rain", code: 65, temp: 9, wind: 18, isDay: 1 },
   { label: "Snow", code: 75, temp: -2, wind: 12, isDay: 1 },
+  { label: "Windy", code: 3, temp: 14, wind: 32, isDay: 1 },
   { label: "Storm", code: 96, temp: 14, wind: 28, isDay: 1 },
   { label: "Clear night", code: 0, temp: 8, wind: 4, isDay: 0 },
 ];
@@ -262,6 +291,8 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedDay, setSelectedDay] = useState({ type: "current" });
+  const [neoFlybys, setNeoFlybys] = useState({ items: [], loading: false, error: "" });
+  const [expandedFlybys, setExpandedFlybys] = useState([]);
 
   const hourlyPreview = useMemo(() => {
     if (!weather?.hourly?.time?.length) return [];
@@ -308,6 +339,8 @@ export default function Home() {
       const precipTotal = weather.daily.precipitation_sum?.[idx];
       const precipProb = weather.daily.precipitation_probability_max?.[idx];
       const uvMax = weather.daily.uv_index_max?.[idx];
+      const code = weather.daily.weather_code?.[idx];
+      const condition = conditionFromCode(code);
       const avgRaw =
         maxRaw !== undefined && minRaw !== undefined
           ? (maxRaw + minRaw) / 2
@@ -328,6 +361,8 @@ export default function Home() {
         precipProb,
         uvMax,
         summary: getSummary({ max: maxRaw, min: minRaw }, true),
+        condition,
+        code,
       };
     });
   }, [weather]);
@@ -369,7 +404,7 @@ export default function Home() {
       const { latitude, longitude, name, country } = location;
 
       const forecastRes = await fetch(
-        `${FORECAST_URL}?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,weather_code,is_day,pressure_msl,cloud_cover,visibility&hourly=temperature_2m,apparent_temperature&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,wind_gusts_10m_max,precipitation_sum,precipitation_probability_max,uv_index_max&timezone=auto`
+        `${FORECAST_URL}?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,weather_code,is_day,pressure_msl,cloud_cover,visibility&hourly=temperature_2m,apparent_temperature&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,wind_gusts_10m_max,precipitation_sum,precipitation_probability_max,uv_index_max,weather_code&timezone=auto`
       );
       if (!forecastRes.ok) throw new Error("Could not load forecast");
       const forecast = await forecastRes.json();
@@ -431,8 +466,19 @@ export default function Home() {
     };
   }, [clouds.intensity, rain.enabled, snow.enabled, weather?.current?.is_day]);
 
+  const windVisual = useMemo(
+    () => windEffectFromSpeed(weather?.current?.wind_speed_10m, weather?.current?.wind_gusts_10m),
+    [weather]
+  );
+
   const background = useMemo(
-    () => backgroundFromWeather(weather?.current?.weather_code, weather?.current?.is_day),
+    () =>
+      backgroundFromWeather(
+        weather?.current?.weather_code,
+        weather?.current?.is_day,
+        weather?.current?.wind_speed_10m,
+        weather?.current?.wind_gusts_10m
+      ),
     [weather]
   );
 
@@ -444,6 +490,66 @@ export default function Home() {
   useEffect(() => {
     if (weather) setSelectedDay({ type: "current" });
   }, [weather]);
+
+  useEffect(() => {
+    const apiKey = process.env.NEXT_PUBLIC_NASA_KEY;
+    if (!apiKey) {
+      setNeoFlybys((prev) => ({
+        ...prev,
+        error: "Set NEXT_PUBLIC_NASA_KEY in .env.local to load NASA flybys.",
+      }));
+      return;
+    }
+
+    const fetchFlybys = async () => {
+      const today = new Date();
+      const end = new Date();
+      end.setDate(end.getDate() + 2);
+      const fmt = (d) => d.toISOString().slice(0, 10);
+
+      setNeoFlybys((prev) => ({ ...prev, loading: true, error: "" }));
+      try {
+        const res = await fetch(
+          `https://api.nasa.gov/neo/rest/v1/feed?start_date=${fmt(today)}&end_date=${fmt(end)}&api_key=${apiKey}`
+        );
+        if (!res.ok) throw new Error("Could not load NASA flybys");
+        const data = await res.json();
+
+        const items = Object.values(data?.near_earth_objects || {})
+          .flat()
+          .map((neo) => {
+            const ca = neo.close_approach_data?.[0];
+            if (!ca) return null;
+            return {
+              id: neo.id,
+              name: neo.name,
+              hazardous: !!neo.is_potentially_hazardous_asteroid,
+              date: ca.close_approach_date_full || ca.close_approach_date,
+              missKm: ca.miss_distance?.kilometers
+                ? Number(ca.miss_distance.kilometers)
+                : null,
+              speedKph: ca.relative_velocity?.kilometers_per_hour
+                ? Number(ca.relative_velocity.kilometers_per_hour)
+                : null,
+              orbitingBody: ca.orbiting_body || "",
+              jplUrl: neo.nasa_jpl_url || "",
+              magnitudeH: neo.absolute_magnitude_h,
+              diameterMinKm: neo.estimated_diameter?.kilometers?.estimated_diameter_min || null,
+              diameterMaxKm: neo.estimated_diameter?.kilometers?.estimated_diameter_max || null,
+            };
+          })
+          .filter(Boolean)
+          .sort((a, b) => new Date(a.date) - new Date(b.date))
+          .slice(0, 3);
+
+        setNeoFlybys({ items, loading: false, error: "" });
+      } catch (err) {
+        setNeoFlybys({ items: [], loading: false, error: err?.message || "NASA feed error" });
+      }
+    };
+
+    fetchFlybys();
+  }, []);
 
   const selectedDetail = useMemo(() => {
     if (!weather || !selectedDay) return null;
@@ -491,6 +597,7 @@ export default function Home() {
         precipTotal: day.precipTotal,
         precipProb: day.precipProb,
         uvMax: day.uvMax,
+        condition: day.condition,
         wind: undefined,
         humidity: undefined,
       };
@@ -519,6 +626,15 @@ export default function Home() {
       color="rgba(255,255,255,0.3)"
       trailAlpha={0.03}
     />
+      )}
+
+      {windVisual.enabled && (
+        <WindLayer
+          intensity={windVisual.intensity}
+          speed={windVisual.speed}
+          color="rgba(255,255,255,0.35)"
+          trailAlpha={0.06}
+        />
       )}
 
       {rain.enabled && (
@@ -688,6 +804,9 @@ export default function Home() {
                     <div className="text-sm text-white/80">{day.date}</div>
                     <div className="text-2xl font-semibold">{day.avg}°</div>
                     <div className="text-white/70 text-sm">High {day.max}° · Low {day.min}°</div>
+                    {day.condition && (
+                      <div className="text-sm text-white/80">Conditions: {day.condition}</div>
+                    )}
                     <div className="text-sm text-white/70">{day.summary}</div>
                     
                   </div>
@@ -780,6 +899,12 @@ export default function Home() {
                     <span>UV index {formatNumber(selectedDetail.uvMax, 1)}</span>
                   </div>
                 )}
+                {selectedDetail.condition && (
+                  <div className="flex items-center gap-2">
+                    <Sun className="h-4 w-4" />
+                    <span>Conditions {selectedDetail.condition}</span>
+                  </div>
+                )}
               </div>
               {(selectedDetail.sunrise || selectedDetail.sunset) && (
                 <div className="flex flex-wrap gap-4 text-sm text-white/80">
@@ -795,6 +920,95 @@ export default function Home() {
           </Card>
         )}
       </div>
+
+      {(neoFlybys.loading || neoFlybys.items.length || neoFlybys.error) && (
+        <Card className="backdrop-blur bg-white/10 text-white border-white/20 shadow-lg mt-6">
+          <CardHeader className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5" />
+            <CardTitle>Near-Earth flybys</CardTitle>
+            <CardDescription className="text-white/70">
+              NASA NEO feed · next few close approaches
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-white/80">
+            {neoFlybys.loading && <p>Loading NASA data…</p>}
+            {neoFlybys.error && !neoFlybys.loading && (
+              <p className="text-red-100">{neoFlybys.error}</p>
+            )}
+            {!neoFlybys.loading && !neoFlybys.error && !neoFlybys.items.length && (
+              <p>No flybys found in the next couple of days.</p>
+            )}
+            {neoFlybys.items.map((flyby) => {
+              const badgeClass = flyby.hazardous
+                ? "bg-red-500/80 text-white"
+                : "bg-emerald-500/80 text-white";
+              const dateLabel = flyby.date
+                ? new Date(flyby.date).toLocaleString("en-US", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })
+                : "Date unknown";
+              const isOpen = expandedFlybys.includes(flyby.id);
+              return (
+                <div
+                  key={flyby.id}
+                  className="rounded-lg border border-white/15 bg-white/5 p-3"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold">{flyby.name}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-xs ${badgeClass}`}>
+                      {flyby.hazardous ? "Hazardous" : "Low risk"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedFlybys((prev) =>
+                          prev.includes(flyby.id)
+                            ? prev.filter((id) => id !== flyby.id)
+                            : [...prev, flyby.id]
+                        )
+                      }
+                      className="ml-auto inline-flex items-center gap-1 rounded-md border border-white/20 px-2 py-1 text-xs text-white hover:bg-white/10"
+                    >
+                      <ChevronDown
+                        className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                      />
+                      {isOpen ? "Hide" : "Details"}
+                    </button>
+                  </div>
+                  <div className="text-white/70">{dateLabel}</div>
+                  <div className="mt-2 flex flex-wrap gap-4 text-white/80">
+                    <div>Miss distance: {flyby.missKm ? `${Math.round(flyby.missKm).toLocaleString()} km` : "--"}</div>
+                    <div>Speed: {flyby.speedKph ? `${Math.round(flyby.speedKph).toLocaleString()} km/h` : "--"}</div>
+                  </div>
+                  {isOpen && (
+                    <div className="mt-2 space-y-1 text-white/80">
+                      <div>
+                        Diameter:{" "}
+                        {flyby.diameterMinKm && flyby.diameterMaxKm
+                          ? `${flyby.diameterMinKm.toFixed(2)} – ${flyby.diameterMaxKm.toFixed(2)} km`
+                          : "--"}
+                      </div>
+                      <div>Absolute magnitude (H): {flyby.magnitudeH ?? "--"}</div>
+                      <div>Orbiting body: {flyby.orbitingBody || "--"}</div>
+                      {flyby.jplUrl && (
+                        <a
+                          href={flyby.jplUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-cyan-200 underline"
+                        >
+                          View NASA JPL details
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

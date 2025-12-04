@@ -4,7 +4,7 @@ export function RainLayer({
   intensity = 1,
   wind = 0,
   color = "rgba(255,255,255,0.45)",
-  trailAlpha = 0.08,
+  trailAlpha = 0.04,
 }) {
   const canvasRef = useRef(null);
 
@@ -39,8 +39,15 @@ export function RainLayer({
     };
 
     const draw = () => {
-      ctx.fillStyle = `rgba(0,0,0,${trailAlpha})`;
-      ctx.fillRect(0, 0, width, height);
+      // watch this just in case  destination-out
+      ctx.clearRect(0, 0, width, height);
+      if (trailAlpha > 0) {
+        ctx.save();
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.fillStyle = `rgba(0,0,0,${trailAlpha})`;
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
+      }
 
       ctx.strokeStyle = color;
       drops.forEach((drop) => {
