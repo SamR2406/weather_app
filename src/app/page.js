@@ -15,6 +15,7 @@ import { StarLayer } from "@/components/StarLayer";
 import { Droplets, MapPin, Search, Sun, Thermometer, Wind } from "lucide-react";
 import { SunLayer } from "@/components/SunLayer";
 import { CloudLayer } from "@/components/CloudLayer";
+import { SnowLayer } from "@/components/SnowLayer";
 
 function getOrdinal(n) {
   const s = ["th", "st", "nd", "rd"];
@@ -46,9 +47,62 @@ const formatTime = (value, options = {}) => {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", ...options });
 };
 
+const buildFakeWeather = ({ name, code, isDay = 1, temp = 6, wind = 8 }) => {
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() + i);
+    return d.toISOString().slice(0, 10);
+  });
+
+  return {
+    location: `${name} (Demo)`,
+    current: {
+      time: now.toISOString(),
+      temperature_2m: temp,
+      apparent_temperature: temp - 1,
+      relative_humidity_2m: 70,
+      wind_speed_10m: wind,
+      wind_gusts_10m: wind * 1.4,
+      weather_code: code,
+      is_day: isDay,
+      pressure_msl: 1012,
+      cloud_cover: 60,
+      visibility: 9000,
+    },
+    hourly: {
+      time: Array.from({ length: 24 }, (_, i) => {
+        const d = new Date(now);
+        d.setHours(d.getHours() + i);
+        return d.toISOString();
+      }),
+      temperature_2m: Array.from({ length: 24 }, () => temp + (Math.random() * 4 - 2)),
+      apparent_temperature: Array.from({ length: 24 }, () => temp + (Math.random() * 4 - 2)),
+    },
+    daily: {
+      time: days,
+      temperature_2m_max: days.map(() => temp + 3),
+      temperature_2m_min: days.map(() => temp - 2),
+      sunrise: days.map((d) => `${d}T07:30`),
+      sunset: days.map((d) => `${d}T16:30`),
+      wind_gusts_10m_max: days.map(() => wind * 1.5),
+      precipitation_sum: days.map(() => 5),
+      precipitation_probability_max: days.map(() => 50),
+      uv_index_max: days.map(() => 2),
+    },
+    summary: `Demo weather for ${name}`,
+    todayHigh: temp + 3,
+    todayLow: temp - 2,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  };
+};
+
 const rainyCodes = [
   51, 53, 55, 56, 57, 61, 63, 65, 80, 81, 82, 95, 96, 99,
 ];
+
+const snowyCodes = [71, 73, 75, 77, 85, 86];
 
 const rainFromCode = (code, windSpeed) => {
   if (code === undefined || code === null) return { enabled: false };
@@ -65,6 +119,21 @@ const rainFromCode = (code, windSpeed) => {
     return { enabled: true, intensity: 1.5, wind: (windSpeed || 0) * 0.06 };
   }
   return { enabled: false };
+};
+
+const snowFromCode = (code, windSpeed) => {
+  if (code === undefined || code === null) return { enabled: false };
+  if (!snowyCodes.includes(code)) return { enabled: false };
+
+  if (code === 85 || code === 86) {
+    return { enabled: true, intensity: 1.2, wind: (windSpeed || 0) * 0.03 };
+  }
+
+  if (code === 77) {
+    return { enabled: true, intensity: 0.7, wind: (windSpeed || 0) * 0.02 };
+  }
+
+  return { enabled: true, intensity: 1, wind: (windSpeed || 0) * 0.025 };
 };
 
 const sunshineFromCode = (code) => {
@@ -178,6 +247,15 @@ const getSummary = (data, isDaily = false) => {
   return parts.join("");
 };
 
+const demoScenarios = [
+  { label: "Sunny day", code: 0, temp: 24, wind: 6, isDay: 1 },
+  { label: "Cloudy", code: 3, temp: 12, wind: 10, isDay: 1 },
+  { label: "Rain", code: 65, temp: 9, wind: 18, isDay: 1 },
+  { label: "Snow", code: 75, temp: -2, wind: 12, isDay: 1 },
+  { label: "Storm", code: 96, temp: 14, wind: 28, isDay: 1 },
+  { label: "Clear night", code: 0, temp: 8, wind: 4, isDay: 0 },
+];
+
 export default function Home() {
   const [query, setQuery] = useState("Sheffield");
   const [weather, setWeather] = useState(null);
@@ -255,9 +333,25 @@ export default function Home() {
   }, [weather]);
 
   
+  const handleDemo = (scenario) => {
+    const fake = buildFakeWeather(scenario);
+    setWeather(fake);
+    setSelectedDay({ type: "current" });
+    setError("");
+  };
+
   const handleSearch = async (event) => {
     event.preventDefault();
-    if (!query.trim()) return;
+    const term = query.trim();
+    if (!term) return;
+
+    const demo = demoScenarios.find(
+      (s) => s.label.toLowerCase() === term.toLowerCase()
+    );
+    if (demo) {
+      handleDemo(demo);
+      return;
+    }
 
     setLoading(true);
     setError("");
@@ -265,7 +359,7 @@ export default function Home() {
 
     try {
       const geoRes = await fetch(
-        `${GEO_URL}?name=${encodeURIComponent(query)}&count=1&language=en&format=json`
+        `${GEO_URL}?name=${encodeURIComponent(term)}&count=1&language=en&format=json`
       );
       if (!geoRes.ok) throw new Error("Could not look up that city");
       const geoData = await geoRes.json();
@@ -293,7 +387,6 @@ export default function Home() {
         todayLow,
       });
       setSelectedDay({ type: "current" });
-
     } catch (err) {
       setError(err?.message || "Something went wrong. Please try again.");
     } finally {
@@ -323,15 +416,20 @@ export default function Home() {
     [weather]
   );
 
+  const snow = useMemo(
+    () => snowFromCode(weather?.current?.weather_code, weather?.current?.wind_speed_10m),
+    [weather]
+  );
+
   const stars = useMemo(() => {
     const isNight = weather?.current?.is_day === 0;
     const cloudiness = clouds.intensity || 0;
     return {
-      enabled: isNight && !rain.enabled,
+      enabled: isNight && !rain.enabled && !snow.enabled,
       density: Math.max(0.6, 1 - cloudiness * 0.6),
       twinkleSpeed: 0.05 + cloudiness * 0.02,
     };
-  }, [clouds.intensity, rain.enabled, weather?.current?.is_day]);
+  }, [clouds.intensity, rain.enabled, snow.enabled, weather?.current?.is_day]);
 
   const background = useMemo(
     () => backgroundFromWeather(weather?.current?.weather_code, weather?.current?.is_day),
@@ -429,6 +527,15 @@ export default function Home() {
           wind={rain.wind}
           color="rgba(255,255,255,0.45)"
           trailAlpha={0.08}
+        />
+      )}
+
+      {snow.enabled && (
+        <SnowLayer
+          intensity={snow.intensity}
+          wind={snow.wind}
+          color="rgba(255,255,255,0.9)"
+          trailAlpha={0.05}
         />
       )}
 
