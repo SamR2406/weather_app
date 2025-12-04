@@ -48,9 +48,9 @@ export function SunLayer({
 
       ctx.globalCompositeOperation = "lighter";
 
-      // Position the sun off to the upper-right so it sits behind cards/title.
-      const originX = width * 0.8;
-      const originY = height * 0.25;
+      // Push the sun further off-screen toward the top-left.
+      const originX = -width * 0.05;
+      const originY = -height * 0.02;
 
       ctx.save();
       ctx.translate(originX, originY);
@@ -67,8 +67,8 @@ export function SunLayer({
 
         // Gradient along the ray
         const gradient = ctx.createLinearGradient(0, 0, x2, y2);
-        gradient.addColorStop(0, `rgba(255, 230, 120, ${ray.alpha})`);
-        gradient.addColorStop(0.3, `rgba(255, 230, 120, ${ray.alpha * 0.4})`);
+        gradient.addColorStop(0, `rgba(255, 230, 120, ${ray.alpha * 0.3})`);
+        gradient.addColorStop(0.3, `rgba(255, 230, 120, ${ray.alpha * 0.12})`);
         gradient.addColorStop(1, "rgba(255, 230, 120, 0)");
 
         ctx.strokeStyle = gradient;
@@ -97,7 +97,7 @@ export function SunLayer({
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 w-full h-full pointer-events-none z-0"
+      className="absolute inset-0 w-full h-full pointer-events-none z-5"
     />
   );
 }

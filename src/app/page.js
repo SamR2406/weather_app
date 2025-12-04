@@ -154,6 +154,7 @@ const sunshineFromCode = (code) => {
   if (code === 0) return { enabled: true, intensity: 1.2 }; // Sunny
   if (code === 1) return { enabled: true, intensity: 0.8 }; // Mostly clear
   if (code === 2) return { enabled: true, intensity: 0.5 }; // Partly cloudy
+  if (code === 3) return { enabled: true, intensity: 0.4 }; // Mostly cloudy
   return { enabled: false };
 };
 
@@ -278,6 +279,7 @@ const getSummary = (data, isDaily = false) => {
 const demoScenarios = [
   { label: "Sunny day", code: 0, temp: 24, wind: 6, isDay: 1 },
   { label: "Cloudy", code: 3, temp: 12, wind: 10, isDay: 1 },
+  { label: "Cloudy Sunny", code: 3, temp: 18, wind: 8, isDay: 1 },
   { label: "Rain", code: 65, temp: 9, wind: 18, isDay: 1 },
   { label: "Snow", code: 75, temp: -2, wind: 12, isDay: 1 },
   { label: "Windy", code: 3, temp: 14, wind: 32, isDay: 1 },
