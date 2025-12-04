@@ -42,8 +42,10 @@ export function CloudLayer({
 
     const draw = () => {
 
-      ctx.fillStyle = `rgba(0,80,200,${trailAlpha})`;
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.fillStyle = `rgba(0,0,0,${trailAlpha})`;
       ctx.fillRect(0, 0, width, height);
+      ctx.globalCompositeOperation = "source-over";
 
       clouds.forEach((cloud) => {
         const gradient = ctx.createRadialGradient(
