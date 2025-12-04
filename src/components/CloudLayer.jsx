@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 export function CloudLayer({
   intensity = 1,
   wind = 3,
-  color = "rgba(200,200,200,0.05)",
+  color = "rgba(200,200,200,0.5)",
   trailAlpha = 0.03
 }) {
   const canvasRef = useRef(null);
@@ -52,8 +52,8 @@ export function CloudLayer({
           cloud.x, cloud.y, 0,
           cloud.x, cloud.y, cloud.radius
         );
-        gradient.addColorStop(0, `rgba(180,180,255,1${cloud.opacity})`);
-        gradient.addColorStop(1, "rgba(180,180,255,0)");
+        gradient.addColorStop(0, `rgba(210,210,210,1${cloud.opacity})`);
+        gradient.addColorStop(1, "rgba(180,180,190,0)");
        
         ctx.fillStyle = gradient;
         ctx.beginPath();

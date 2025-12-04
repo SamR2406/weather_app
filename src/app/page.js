@@ -82,7 +82,7 @@ const cloudsFromCode = (code) => {
   }
   if (code === 2) {
     // Partly cloudy
-    return { enabled: true, intensity: 0.4, wind: 0.05 };
+    return { enabled: true, intensity: 0.65, wind: 0.05 };
   }
   if (code === 3 || code === 45 || code === 48) {
     // Mostly cloudy / overcast / foggy
@@ -97,7 +97,7 @@ const cloudsFromCode = (code) => {
 
 const conditionFromCode = (code) => {
   if (code === undefined || code === null) return "";
-  if (code === 0) return "Sunny";
+  if (code === 0) return "Clear skies";
   if (code === 1 || code === 2) return "Partly cloudy";
   if (code === 3) return "Overcast";
   if (code === 45 || code === 48) return "Foggy";
@@ -403,22 +403,24 @@ export default function Home() {
 
   return (
     <div className={`relative min-h-screen overflow-hidden text-white ${background}`}>
-
+      <div className="absolute inset-0 -z-10"></div>
       {stars.enabled && (
         <StarLayer density={stars.density} twinkleSpeed={stars.twinkleSpeed} />
       )}
       
-      {sunshine.enabled && !rain.enabled && (
+      {sunshine.enabled && (
+        <div className="absolute inset-0 pointer-events-none">
         <SunLayer intensity={sunshine.intensity * clouds.sunFactor} />
+        </div>
       )}
 
       {clouds.enabled && (
-        <CloudLayer
-          intensity={clouds.intensity}
-          wind={clouds.wind}
-          color="rgba(255,255,255,0.08)"
-          trailAlpha={0.03}
-        />
+    <CloudLayer
+      intensity={clouds.intensity}
+      wind={clouds.wind}
+      color="rgba(255,255,255,0.3)"
+      trailAlpha={0.03}
+    />
       )}
 
       {rain.enabled && (

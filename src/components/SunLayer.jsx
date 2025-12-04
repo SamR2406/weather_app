@@ -88,7 +88,7 @@ export function SunLayer({
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 w-full h-full pointer-events-none"
+      className="absolute inset-0 w-full h-full pointer-events-none z-20"
     />
   );
 }
