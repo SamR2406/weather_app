@@ -48,6 +48,13 @@ export function SunLayer({
 
       ctx.globalCompositeOperation = "lighter";
 
+      // Position the sun off to the upper-right so it sits behind cards/title.
+      const originX = width * 0.8;
+      const originY = height * 0.25;
+
+      ctx.save();
+      ctx.translate(originX, originY);
+
       rays.forEach((ray) => {
         // Update alpha for pulse
         ray.alpha += ray.alphaDir * pulseSpeed;
@@ -72,6 +79,8 @@ export function SunLayer({
         ctx.stroke();
       });
 
+      ctx.restore();
+
       rafId = requestAnimationFrame(draw);
     };
 
@@ -88,7 +97,7 @@ export function SunLayer({
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 w-full h-full pointer-events-none z-20"
+      className="absolute inset-0 w-full h-full pointer-events-none z-0"
     />
   );
 }
