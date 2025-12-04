@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { RainLayer } from "@/components/RainLayer";
+import { StarLayer } from "@/components/StarLayer";
 import { Droplets, MapPin, Search, Sun, Thermometer, Wind } from "lucide-react";
 import { SunLayer } from "@/components/SunLayer";
 import { CloudLayer } from "@/components/CloudLayer";
@@ -322,6 +323,16 @@ export default function Home() {
     [weather]
   );
 
+  const stars = useMemo(() => {
+    const isNight = weather?.current?.is_day === 0;
+    const cloudiness = clouds.intensity || 0;
+    return {
+      enabled: isNight && !rain.enabled,
+      density: Math.max(0.6, 1 - cloudiness * 0.6),
+      twinkleSpeed: 0.05 + cloudiness * 0.02,
+    };
+  }, [clouds.intensity, rain.enabled, weather?.current?.is_day]);
+
   const background = useMemo(
     () => backgroundFromWeather(weather?.current?.weather_code, weather?.current?.is_day),
     [weather]
@@ -392,6 +403,10 @@ export default function Home() {
 
   return (
     <div className={`relative min-h-screen overflow-hidden text-white ${background}`}>
+
+      {stars.enabled && (
+        <StarLayer density={stars.density} twinkleSpeed={stars.twinkleSpeed} />
+      )}
       
       {sunshine.enabled && !rain.enabled && (
         <SunLayer intensity={sunshine.intensity * clouds.sunFactor} />
