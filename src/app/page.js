@@ -475,12 +475,12 @@ export default function Home() {
 
       <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-10">
         <header className="space-y-2">
-          <p className="text-sm uppercase tracking-[0.2em] text-white/80">
-            Open-Meteo Weather
+          <p className="text-m uppercase tracking-[0.2em] text-white/80">
+            Skywatch Weather
           </p>
           <h1 className="text-3xl font-semibold">Check the forecast by city</h1>
           <p className="text-white/80">
-            Uses the free Open-Meteo API with live geocoding and forecast data.
+            What&apos;s happening in the world? Use the search bar to discover current weather, get a 7-day summary or scroll down to check NASA reports on real-time near-earth objects.
           </p>
         </header>
 

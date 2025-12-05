@@ -217,10 +217,10 @@ export const getSummary = (data, isDaily = false) => {
 
   const parts = [];
 
-  if (t <= 0) parts.push("Freezing conditions, bundle up! ");
-  else if (t <= 5) parts.push("Chilly weather outside, possible frost in places. ");
+  if (t <= 0) parts.push("Freezing conditions, wrap up warm! ");
+  else if (t <= 4) parts.push("Chilly weather outside, possible frost in places. ");
   else if (t <= 10) parts.push("Cool out today. ");
-  else if (t <= 20) parts.push("Mild out, light jacket recommended. ");
+  else if (t <= 20) parts.push("Mild out, light layers recommended. ");
   else if (t <= 25) parts.push("Warm and pleasant. ");
   else if (t <= 30) parts.push("Warm to hot weather today. ");
   else if (t <= 35) parts.push("It's set to be hot today. ");
@@ -228,9 +228,9 @@ export const getSummary = (data, isDaily = false) => {
   else parts.push("Very hot outdoors, stay hydrated, avoid strenuous activity and keep pets inside. ");
 
   if (wind <= 1) parts.push("Calm and still. ");
-  else if (wind <= 6) parts.push("Gentle breeze. ");
-  else if (wind <= 20) parts.push("Moderate breeze. ");
-  else if (wind <= 30) parts.push("Fresh breeze. ");
+  else if (wind <= 6) parts.push("Gentle breezes. ");
+  else if (wind <= 20) parts.push("Moderate breezes. ");
+  else if (wind <= 30) parts.push("Fresh breezes. ");
   else if (wind <= 40) parts.push("Strong breeze today, hang on to your hat! ");
   else if (wind <= 50) parts.push("Very strong winds, take care. ");
   else if (wind <= 60) parts.push("Gale force winds. Hard to walk outside. ");
