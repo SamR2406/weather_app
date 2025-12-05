@@ -20,7 +20,7 @@ export function WeatherSearch({
   error,
 }) {
   return (
-    <Card className="backdrop-blur bg-white/10 text-white border-white/20 shadow-lg">
+    <Card className="relative z-50 backdrop-blur bg-white/10 text-white border-white/20 shadow-lg">
       <CardHeader className="gap-3">
         <CardTitle className="flex items-center gap-2 text-lg">
           <MapPin className="h-5 w-5" />
@@ -32,7 +32,7 @@ export function WeatherSearch({
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="flex flex-col gap-3 md:flex-row">
-          <div className="relative z-30 w-full">
+          <div className="relative z-50 w-full">
             <Input
               value={query}
               onChange={(e) => onQueryChange(e.target.value)}
@@ -40,7 +40,7 @@ export function WeatherSearch({
               className="bg-white/80 text-foreground"
             />
             {(suggestions.length > 0 || suggestionLoading) && (
-              <div className="absolute left-0 right-0 top-full z-40 mt-2 overflow-hidden rounded-lg border border-white/30 bg-white text-foreground shadow-xl">
+              <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-lg border border-white/30 bg-white text-foreground shadow-2xl">
                 {suggestionLoading && (
                   <div className="px-3 py-2 text-sm text-gray-600">Searching…</div>
                 )}
