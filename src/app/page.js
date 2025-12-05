@@ -219,7 +219,7 @@ export default function Home() {
       density: Math.max(0.6, 1 - cloudiness * 0.6),
       twinkleSpeed: 0.05 + cloudiness * 0.02,
     };
-  }, [clouds.intensity, rain.enabled, snow.enabled, weather?.current?.is_day]);
+  }, [clouds.intensity, rain.enabled, snow.enabled, weather]);
 
   const windVisual = useMemo(
     () => windEffectFromSpeed(weather?.current?.wind_speed_10m, weather?.current?.wind_gusts_10m),
@@ -308,7 +308,7 @@ export default function Home() {
     if (!apiKey) {
       setNeoFlybys((prev) => ({
         ...prev,
-        error: "Set NEXT_PUBLIC_NASA_KEY in .env.local to load NASA flybys.",
+        error: "Set NEXT_PUBLIC_NASA_KEY in .env.local to load NASA flybys following advise :).",
       }));
       return;
     }
@@ -324,7 +324,7 @@ export default function Home() {
         const res = await fetch(
           `https://api.nasa.gov/neo/rest/v1/feed?start_date=${fmt(today)}&end_date=${fmt(end)}&api_key=${apiKey}`
         );
-        if (!res.ok) throw new Error("Could not load NASA flybys");
+        if (!res.ok) throw new Error("Could not load NASA flybys whoopsie");
         const data = await res.json();
 
         const items = Object.values(data?.near_earth_objects || {})
