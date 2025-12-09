@@ -1,36 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Skywatch Weather
+Interactive Next.js (App Router) experience for exploring current conditions, 7‑day outlooks, and hourly previews. Visual layers react to the weather (sun, rain, snow, wind, starfield), and NASA NEO data highlights near‑earth asteroid flybys.
 
-## Getting Started
+## Features
+- City search with Open‑Meteo geocoding and forecast APIs
+- Current, hourly, and 7‑day summaries with quick “demo” scenarios for offline previewing
+- Animated visual layers: clouds, rain, snow, wind streaks, sun glow, night stars
+- Detail drawer that adapts to the selected day with feels‑like temps, wind, humidity, and sunrise/sunset
+- NASA Near‑Earth Object feed (optional) with expandable flyby details
 
-First, run the development server:
+## Quick start
+Prereqs: Node 20+ and npm.
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# app runs on http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Environment
+Create a `.env.local` in the project root if you want live NASA flybys (server-only, not exposed to the client):
+```
+NASA_API_KEY=your_api_key_here
+```
+Add the same variable in Vercel → Project Settings → Environment Variables. The app calls NASA through a server route (`/api/neo`), so the key never reaches the browser. Without a key, the rest of the app still works and will show a notice in the flyby panel.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Scripts
+- `npm run dev` – start the dev server
+- `npm run build` – production build
+- `npm run start` – run the built app
+- `npm run lint` – lint with ESLint/Next.js config
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Data sources
+- Weather + geocoding: [Open‑Meteo](https://open-meteo.com/)
+- Near‑Earth Objects: [NASA NEO Feed](https://api.nasa.gov/)

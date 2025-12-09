@@ -304,30 +304,21 @@ export default function Home() {
   };
 
   useEffect(() => {
-    const apiKey = process.env.NEXT_PUBLIC_NASA_KEY;
-    if (!apiKey) {
-      setNeoFlybys((prev) => ({
-        ...prev,
-        error: "Set NEXT_PUBLIC_NASA_KEY in .env.local to load NASA flybys following advise :).",
-      }));
-      return;
-    }
-
     const fetchFlybys = async () => {
-      const today = new Date();
-      const end = new Date();
-      end.setDate(end.getDate() + 2);
-      const fmt = (d) => d.toISOString().slice(0, 10);
-
       setNeoFlybys((prev) => ({ ...prev, loading: true, error: "" }));
       try {
-        const res = await fetch(
-          `https://api.nasa.gov/neo/rest/v1/feed?start_date=${fmt(today)}&end_date=${fmt(end)}&api_key=${apiKey}`
-        );
-        if (!res.ok) throw new Error("Could not load NASA flybys whoopsie");
-        const data = await res.json();
+        const res = await fetch("/api/neo");
+        const payload = await res.json().catch(() => null);
 
-        const items = Object.values(data?.near_earth_objects || {})
+        if (!res.ok) {
+          const message =
+            payload?.error ||
+            payload?.details ||
+            "Could not load NASA flybys. Check server logs for details.";
+          throw new Error(message);
+        }
+
+        const items = Object.values(payload?.near_earth_objects || {})
           .flat()
           .map((neo) => {
             const ca = neo.close_approach_data?.[0];
@@ -356,7 +347,11 @@ export default function Home() {
 
         setNeoFlybys({ items, loading: false, error: "" });
       } catch (err) {
-        setNeoFlybys({ items: [], loading: false, error: err?.message || "NASA feed error" });
+        setNeoFlybys({
+          items: [],
+          loading: false,
+          error: err?.message || "NASA feed error",
+        });
       }
     };
 
